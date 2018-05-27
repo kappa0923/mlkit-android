@@ -38,6 +38,8 @@ import android.view.MenuItem
 import android.widget.Toast
 import com.google.firebase.ml.vision.FirebaseVision
 import com.google.firebase.ml.vision.common.FirebaseVisionImage
+import com.google.firebase.ml.vision.face.FirebaseVisionFace
+import com.google.firebase.ml.vision.face.FirebaseVisionFaceDetectorOptions
 import com.google.firebase.ml.vision.text.FirebaseVisionText
 
 import kotlinx.android.synthetic.main.activity_main.*
@@ -69,6 +71,7 @@ class MainActivity : AppCompatActivity() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
             R.id.add_photo -> {
+                graphicOverlay.clear()
                 setImageViewSize()
                 showCameraWithPermissionCheck()
                 true
@@ -83,7 +86,10 @@ class MainActivity : AppCompatActivity() {
                 if (resultCode == Activity.RESULT_OK) {
                     val capturePhoto = getScaledBitmap()
                     setRecognizePhotoToView(capturePhoto)
-                    runTextRecognition(capturePhoto)
+
+                    // TODO : Run text recognition or face detection.
+//                    runTextRecognition(capturePhoto)
+//                    runFaceDetection(capturePhoto)
                 } else {
                     showToast("Camera Canceled")
                 }
@@ -198,6 +204,41 @@ class MainActivity : AppCompatActivity() {
                     graphicOverlay.add(textGraphic)
                 }
             }
+        }
+    }
+
+    /**
+     * 対象の画像の顔検出を行う
+     * @param detectionTarget 検出対象の画像
+     */
+    private fun runFaceDetection(detectionTarget: Bitmap) {
+        val image = FirebaseVisionImage.fromBitmap(detectionTarget)
+        val options = FirebaseVisionFaceDetectorOptions.Builder()
+                .setModeType(FirebaseVisionFaceDetectorOptions.ACCURATE_MODE)
+                .setLandmarkType(FirebaseVisionFaceDetectorOptions.ALL_LANDMARKS)
+                .setClassificationType(FirebaseVisionFaceDetectorOptions.ALL_CLASSIFICATIONS)
+                .build()
+        val detector = FirebaseVision.getInstance().getVisionFaceDetector(options)
+        detector.detectInImage(image)
+                .addOnSuccessListener { faces ->
+                    processFaceDetection(faces)
+                }
+                .addOnFailureListener { e ->
+                    e.printStackTrace()
+                }
+    }
+
+    private fun processFaceDetection(faces: List<FirebaseVisionFace>) {
+        if (faces.isEmpty()) {
+            showToast("Face not found")
+            return
+        }
+
+        graphicOverlay.clear()
+
+        for (face in faces) {
+            val faceGraphic = FaceGraphic(graphicOverlay, face)
+            graphicOverlay.add(faceGraphic)
         }
     }
 
