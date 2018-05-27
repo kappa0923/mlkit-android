@@ -1,0 +1,11 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+      xmlns:app="http://schemas.android.com/apk/res-auto"
+      xmlns:tools="http://schemas.android.com/tools"
+      tools:context="jp.kappa0923.android.mlkit.MainActivity">
+    <item
+        android:id="@+id/add_photo"
+        android:orderInCategory="100"
+        android:title="@string/action_add"
+        android:icon="@drawable/ic_add_a_photo"
+        app:showAsAction="always"/>
+</menu>
