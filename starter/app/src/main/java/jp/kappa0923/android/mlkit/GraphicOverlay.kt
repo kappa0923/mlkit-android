@@ -39,6 +39,8 @@ class GraphicOverlay(context: Context, attrs: AttributeSet) : View(context, attr
     private var previewHeight = 0
     private var heightScaleFactor = 1.0f
     private val graphics = HashSet<Graphic>()
+    private var translateX = 0.0f
+    private var translateY = 0.0f
 
     /**
      * レンダリングされるオブジェクトの基本クラス
@@ -116,12 +118,19 @@ class GraphicOverlay(context: Context, attrs: AttributeSet) : View(context, attr
         postInvalidate()
     }
 
+    fun translate(x: Float, y: Float) {
+        translateX = x
+        translateY = y
+    }
+
     /**
      * カスタムオブジェクトを描画する
      * @param canvas 描画先のCanvas
      */
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
+
+        canvas.translate(translateX, translateY)
 
         synchronized(lock) {
             if (previewWidth != 0 && previewHeight != 0) {

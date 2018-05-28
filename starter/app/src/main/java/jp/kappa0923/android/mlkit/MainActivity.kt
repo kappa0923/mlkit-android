@@ -86,6 +86,9 @@ class MainActivity : AppCompatActivity() {
                 if (resultCode == Activity.RESULT_OK) {
                     val capturePhoto = getScaledBitmap()
                     setRecognizePhotoToView(capturePhoto)
+                    val x = (imageMaxWidth - capturePhoto.width).toFloat() / 2
+                    val y = (imageMaxHeight - capturePhoto.height).toFloat() / 2
+                    graphicOverlay.translate(x, y)
 
                     // TODO : Run text recognition or face detection.
 //                    runTextRecognition(capturePhoto)
