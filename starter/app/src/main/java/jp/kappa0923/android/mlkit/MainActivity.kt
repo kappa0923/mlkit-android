@@ -173,15 +173,7 @@ class MainActivity : AppCompatActivity() {
      * @param recognitionTarget 認識対象の画像
      */
     private fun runTextRecognition(recognitionTarget: Bitmap) {
-        val image = FirebaseVisionImage.fromBitmap(recognitionTarget)
-        val detector = FirebaseVision.getInstance().visionTextDetector
-        detector.detectInImage(image)
-                .addOnSuccessListener { texts ->
-                    processTextRecognitionResult(texts)
-                }
-                .addOnFailureListener { e ->
-                    e.printStackTrace()
-                }
+        // TODO : ここにテキスト認識のコードを追加する
     }
 
     /**
@@ -189,25 +181,7 @@ class MainActivity : AppCompatActivity() {
      * @param texts 認識結果のテキスト情報
      */
     private fun processTextRecognitionResult(texts: FirebaseVisionText) {
-        val blocks = texts.blocks
-        if (blocks.size == 0) {
-            showToast("Text not found")
-            return
-        }
-
-        graphicOverlay.clear()
-
-        for (i in blocks.indices) {
-            val lines = blocks[i].lines
-            for (j in lines.indices) {
-                val elements = lines[j].elements
-                for (k in elements.indices) {
-                    val textGraphic = TextGraphic(graphicOverlay, elements[k])
-
-                    graphicOverlay.add(textGraphic)
-                }
-            }
-        }
+        // TODO : ここにテキスト認識の結果を処理するコードを追加する
     }
 
     /**
@@ -215,34 +189,11 @@ class MainActivity : AppCompatActivity() {
      * @param detectionTarget 検出対象の画像
      */
     private fun runFaceDetection(detectionTarget: Bitmap) {
-        val image = FirebaseVisionImage.fromBitmap(detectionTarget)
-        val options = FirebaseVisionFaceDetectorOptions.Builder()
-                .setModeType(FirebaseVisionFaceDetectorOptions.ACCURATE_MODE)
-                .setLandmarkType(FirebaseVisionFaceDetectorOptions.ALL_LANDMARKS)
-                .setClassificationType(FirebaseVisionFaceDetectorOptions.ALL_CLASSIFICATIONS)
-                .build()
-        val detector = FirebaseVision.getInstance().getVisionFaceDetector(options)
-        detector.detectInImage(image)
-                .addOnSuccessListener { faces ->
-                    processFaceDetection(faces)
-                }
-                .addOnFailureListener { e ->
-                    e.printStackTrace()
-                }
+        // TODO : ここに顔検出のコードを追加する
     }
 
     private fun processFaceDetection(faces: List<FirebaseVisionFace>) {
-        if (faces.isEmpty()) {
-            showToast("Face not found")
-            return
-        }
-
-        graphicOverlay.clear()
-
-        for (face in faces) {
-            val faceGraphic = FaceGraphic(graphicOverlay, face)
-            graphicOverlay.add(faceGraphic)
-        }
+        // TODO : ここに顔検出の結果を処理するコードを追加する
     }
 
     private fun setImageViewSize() {
