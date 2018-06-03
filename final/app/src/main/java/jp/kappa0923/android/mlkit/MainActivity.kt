@@ -252,6 +252,10 @@ class MainActivity : AppCompatActivity() {
                 }
     }
 
+    /**
+     * 顔検出の結果を処理する
+     * @param faces 検出された顔のリスト
+     */
     private fun processFaceDetection(faces: List<FirebaseVisionFace>) {
         if (faces.isEmpty()) {
             showToast("Face not found")
@@ -266,6 +270,10 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * 対象の画像からラベル付けを行う
+     * @param labelingTarget ラベル付け対象の画像
+     */
     private fun runImageLabeling(labelingTarget: Bitmap) {
         val inputDims = intArrayOf(DIM_BATCH_SIZE, DIM_IMG_SIZE_X, DIM_IMG_SIZE_Y, DIM_PIXEL_SIZE)
         val outputDims = intArrayOf(DIM_BATCH_SIZE, labelList.size)
@@ -296,6 +304,10 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * ラベル付けの結果を処理する
+     * @param labels アウトプットされた情報
+     */
     private fun processImageLabeling(labels: Array<ByteArray>) {
         if (labels.isEmpty()) {
             showToast("Not found")
