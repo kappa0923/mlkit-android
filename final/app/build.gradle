@@ -41,5 +41,6 @@ dependencies {
 
     implementation 'com.google.firebase:firebase-core:16.0.0'
     implementation 'com.google.firebase:firebase-ml-vision:16.0.0'
+    implementation 'com.google.firebase:firebase-ml-model-interpreter:16.0.0'
 }
 apply plugin: 'com.google.gms.google-services'

@@ -33,9 +33,14 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.support.v4.content.FileProvider
 import android.support.v7.app.AppCompatActivity
+import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.widget.Toast
+import com.google.firebase.ml.common.FirebaseMLException
+import com.google.firebase.ml.custom.*
+import com.google.firebase.ml.custom.model.FirebaseCloudModelSource
+import com.google.firebase.ml.custom.model.FirebaseModelDownloadConditions
 import com.google.firebase.ml.vision.FirebaseVision
 import com.google.firebase.ml.vision.common.FirebaseVisionImage
 import com.google.firebase.ml.vision.face.FirebaseVisionFace
@@ -44,23 +49,38 @@ import com.google.firebase.ml.vision.text.FirebaseVisionText
 
 import kotlinx.android.synthetic.main.activity_main.*
 import permissions.dispatcher.*
+import java.io.BufferedReader
 import java.io.File
+import java.io.InputStreamReader
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlin.experimental.and
 
 @RuntimePermissions
 class MainActivity : AppCompatActivity() {
     companion object {
+        const val TAG = "MainActivity"
         const val INTENT_PHOTO = 1001
+        const val DIM_BATCH_SIZE = 1
+        const val DIM_PIXEL_SIZE = 3
+        const val DIM_IMG_SIZE_X = 224
+        const val DIM_IMG_SIZE_Y = 224
+        const val LABEL_PATH = "labels.txt"
+        const val HOSTED_MODEL_NAME = "mobilenet"
     }
 
     private var imageMaxWidth = 0
     private var imageMaxHeight = 0
     private var imageFilePath = ""
+    private val labelList by lazy { loadLabelList() }
+    private var interpreter: FirebaseModelInterpreter? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        setupCustomModel()
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -93,6 +113,7 @@ class MainActivity : AppCompatActivity() {
                     // TODO : Run text recognition or face detection.
 //                    runTextRecognition(capturePhoto)
 //                    runFaceDetection(capturePhoto)
+//                    runImageLabeling(capturePhoto)
                 } else {
                     showToast("Camera Canceled")
                 }
@@ -243,6 +264,121 @@ class MainActivity : AppCompatActivity() {
             val faceGraphic = FaceGraphic(graphicOverlay, face)
             graphicOverlay.add(faceGraphic)
         }
+    }
+
+    private fun runImageLabeling(labelingTarget: Bitmap) {
+        val inputDims = intArrayOf(DIM_BATCH_SIZE, DIM_IMG_SIZE_X, DIM_IMG_SIZE_Y, DIM_PIXEL_SIZE)
+        val outputDims = intArrayOf(DIM_BATCH_SIZE, labelList.size)
+
+        val dataOption = FirebaseModelInputOutputOptions.Builder()
+                .setInputFormat(0, FirebaseModelDataType.BYTE, inputDims)
+                .setOutputFormat(0, FirebaseModelDataType.BYTE, outputDims)
+                .build()
+
+        val inputData = convertBitmapToByteBuffer(labelingTarget)
+
+        try {
+            val inputs = FirebaseModelInputs.Builder().add(inputData).build()
+            interpreter?.let {
+                it.run(inputs, dataOption)
+                        .addOnFailureListener { e ->
+                            e.printStackTrace()
+                            showToast("Error running model inference")
+                        }
+                        .addOnSuccessListener {
+                            val labelProbArray = it.getOutput<Array<ByteArray>>(0)
+                            processImageLabeling(labelProbArray)
+                        }
+            }
+        } catch (e: FirebaseMLException) {
+            showToast("Error running model inference")
+            e.printStackTrace()
+        }
+    }
+
+    private fun processImageLabeling(labels: Array<ByteArray>) {
+        if (labels.isEmpty()) {
+            showToast("Not found")
+            return
+        }
+
+        graphicOverlay.clear()
+
+        Log.d(TAG, "Labeling")
+        var topScore = 0.0f
+        var topLabel = ""
+        for (i in 0 until labelList.size) {
+            val score = (labels[0][i] and 0xff.toByte()) / 255f
+            if (score > topScore) {
+                topScore = score
+                topLabel = labelList[i]
+            }
+        }
+
+        val labelGraphic = LabelGraphic(graphicOverlay, "$topLabel : $topScore")
+        graphicOverlay.add(labelGraphic)
+    }
+
+    private fun setupCustomModel() {
+        try {
+            val conditions = FirebaseModelDownloadConditions.Builder()
+                    .requireWifi()
+                    .build()
+
+            val cloudSource = FirebaseCloudModelSource.Builder(HOSTED_MODEL_NAME)
+                    .enableModelUpdates(true)
+                    .setInitialDownloadConditions(conditions)
+                    .setUpdatesDownloadConditions(conditions)
+                    .build()
+
+            FirebaseModelManager.getInstance()
+                    .registerCloudModelSource(cloudSource)
+
+            val modelOptions = FirebaseModelOptions.Builder()
+                    .setCloudModelName(HOSTED_MODEL_NAME)
+                    .build()
+
+            interpreter = FirebaseModelInterpreter.getInstance(modelOptions)
+        } catch (e: FirebaseMLException) {
+            showToast("Error while setting up the model")
+            e.printStackTrace()
+        }
+    }
+
+    private fun loadLabelList(): List<String> {
+        val labelList = ArrayList<String>()
+        BufferedReader(InputStreamReader(applicationContext.assets.open(LABEL_PATH))).use {
+            var line = it.readLine()
+            while (line != null) {
+                labelList.add(line)
+                line = it.readLine()
+            }
+        }
+
+        return labelList
+    }
+
+    private fun convertBitmapToByteBuffer(data: Bitmap): ByteBuffer {
+        val intValues = IntArray(DIM_IMG_SIZE_X * DIM_IMG_SIZE_Y)
+        val imageData = ByteBuffer.allocateDirect(
+                DIM_BATCH_SIZE * DIM_IMG_SIZE_X * DIM_IMG_SIZE_Y * DIM_PIXEL_SIZE)
+        imageData.order(ByteOrder.nativeOrder())
+        val scaledBitmap = Bitmap.createScaledBitmap(data, DIM_IMG_SIZE_X, DIM_IMG_SIZE_Y,
+                true)
+        imageData.rewind()
+        scaledBitmap.getPixels(intValues, 0, scaledBitmap.width, 0, 0,
+                scaledBitmap.width, scaledBitmap.height)
+        // Convert the image to int points.
+        var pixel = 0
+        for (i in 0 until DIM_IMG_SIZE_X) {
+            for (j in 0 until DIM_IMG_SIZE_Y) {
+                val value = intValues[pixel++]
+                imageData.put((value shr 16 and 0xFF).toByte())
+                imageData.put((value shr 8 and 0xFF).toByte())
+                imageData.put((value and 0xFF).toByte())
+            }
+        }
+        return imageData
     }
 
     private fun setImageViewSize() {
